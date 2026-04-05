@@ -1,4 +1,6 @@
-<html lang="en"><head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>👶 Baby Girl Tracker</title>
@@ -177,7 +179,7 @@ textarea { resize: vertical; min-height: 65px; }
 <body>
 
 <!-- ═══════ SETUP SCREEN ═══════ -->
-<div class="overlay hidden" id="setup-screen">
+<div class="overlay" id="setup-screen">
   <div class="ov-logo">🎀</div>
   <div class="ov-title">Baby Girl Tracker</div>
   <div class="ov-sub">One-time setup — takes about 3 minutes. All caretakers will share the same live log.</div>
@@ -211,7 +213,7 @@ textarea { resize: vertical; min-height: 65px; }
   </div>
 
   <div class="setup-err" id="setup-err"></div>
-  <button class="btn-setup" onclick="completeSetup()">🎀 Save &amp; Open Tracker</button>
+  <button class="btn-setup" onclick="completeSetup()">🎀 Save & Open Tracker</button>
 </div>
 
 <!-- ═══════ CARETAKER SCREEN (PIN only — shown when URL is pre-configured) ═══════ -->
@@ -260,7 +262,7 @@ textarea { resize: vertical; min-height: 65px; }
 </div>
 
 <!-- ═══════ APP ═══════ -->
-<div id="app" style="display: block;">
+<div id="app">
 
 <div id="a2hs-banner" style="display:none;background:var(--soft1);border-bottom:1px solid var(--soft2);padding:10px 16px;font-size:0.78rem;color:var(--pink2);text-align:center;line-height:1.5">
   📱 <strong>iPhone:</strong> Tap the Share button → "Add to Home Screen" &nbsp;|&nbsp; <strong>Android:</strong> Tap Menu → "Add to Home Screen"
@@ -269,7 +271,7 @@ textarea { resize: vertical; min-height: 65px; }
 <header>
   <div class="hdr-left">
     <h1>🎀 Baby Girl Tracker</h1>
-    <p><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Synced</span></p>
+    <p><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Connecting...</span></p>
   </div>
   <div class="hdr-right">
     <button class="btn-hdr" onclick="refreshData()">↻</button>
@@ -334,15 +336,8 @@ textarea { resize: vertical; min-height: 65px; }
 <!-- LOG TAB -->
 <div id="tab-log" class="panel">
   <div class="card">
-    <div class="log-header"><span class="log-title">🍼 Feedings</span><span class="log-count" id="feed-count">1 entry</span></div>
-    <div id="feed-list"><div class="log-item">
-      <div class="log-icon">🍼</div>
-      <div class="log-body">
-        <div class="log-main">04/05/2026 · 11:58 AM</div>
-        <div class="log-sub">4 oz</div>
-      </div>
-      <button class="log-del" onclick="deleteEntry('feedings','-OpTNKuSY3qdIojP2gZD')">✕</button>
-    </div></div>
+    <div class="log-header"><span class="log-title">🍼 Feedings</span><span class="log-count" id="feed-count">0 entries</span></div>
+    <div id="feed-list"><div class="log-empty">No feedings logged yet.</div></div>
   </div>
   <div class="card">
     <div class="log-header"><span class="log-title">😴 Sleep</span><span class="log-count" id="sleep-count">0 entries</span></div>
@@ -361,16 +356,7 @@ textarea { resize: vertical; min-height: 65px; }
 
   <div class="card">
     <div class="card-title">📊 Today at a Glance</div>
-    <div id="summary-content" style="font-size:0.9rem;line-height:1.9;color:var(--text)">
-    <div><strong>📅 Today:</strong> Sunday, April 5</div>
-    <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
-    <div>🍼 <strong>Total feedings:</strong> 1</div>
-    <div>🍼 <strong>Total formula:</strong> 4.0 oz</div>
-    <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
-    <div>😴 <strong>Total sleep:</strong> 0.0 hrs</div>
-    <div>☀️ <strong>Naps today:</strong> 0</div>
-    <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
-    <div style="color:var(--gray3);font-size:0.78rem">All entries: 1 feedings · 0 sleep sessions</div></div>
+    <div id="summary-content" style="font-size:0.9rem;line-height:1.9;color:var(--text)">Tap this tab to refresh.</div>
   </div>
 
   <div class="card" style="border:1.5px solid var(--soft2)">
@@ -385,11 +371,12 @@ textarea { resize: vertical; min-height: 65px; }
   </div>
 
   <div class="card" style="border:1.5px solid var(--soft2);background:var(--soft3)">
-    <div class="card-title">📤 Share with Caretakers</div>
+    <div class="card-title">🔗 Share with Caretakers</div>
     <div style="font-size:0.83rem;color:#7c2d45;line-height:1.65;margin-bottom:14px">
-      Download a pre-configured version of this app. Anyone you send it to will <strong>only need to enter your PIN</strong> — no Firebase setup required.
+      Send this link to anyone who needs access. They open it, enter your PIN, and they're in.
     </div>
-    <button class="btn-save" onclick="exportShareable()" style="width:100%;padding:12px;font-size:0.95rem">⬇️ Download Shareable Version</button>
+    <button class="btn-save" onclick="shareLink()" style="width:100%;padding:12px;font-size:0.95rem">📋 Copy Link</button>
+    <div class="save-msg" id="share-msg"></div>
   </div>
 </div>
 </div><!-- #app -->
@@ -501,23 +488,26 @@ async function completeCaretakerSetup() {
 }
 
 // ═══════════════════════════════════════════
-// EXPORT SHAREABLE VERSION
+// SHARE LINK
 // ═══════════════════════════════════════════
-function exportShareable() {
-  if (!CFG || !CFG.dbUrl) { showToast('Set up the app first before exporting.', true); return; }
-  // Switch to Feed tab before capturing so the exported file always opens on Feed
-  showTab('feed', document.querySelector('.tab-btn'));
-  const src = document.documentElement.outerHTML;
-  const baked = src.replace('const BAKED_DB_URL = "";', 'const BAKED_DB_URL = "' + CFG.dbUrl + '";');
-  const blob = new Blob([baked], { type: 'text/html' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'index.html';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  showToast('Shareable version downloaded! Share this file — caretakers only need to enter the PIN.');
+function shareLink() {
+  const url = window.location.href.split('?')[0].split('#')[0];
+  const msg = document.getElementById('share-msg');
+  // Use native share sheet on mobile if available
+  if (navigator.share) {
+    navigator.share({ title: 'Baby Girl Tracker', url })
+      .catch(() => {});
+    return;
+  }
+  // Fallback: copy to clipboard
+  navigator.clipboard.writeText(url).then(() => {
+    msg.style.color = '#ec4899';
+    msg.textContent = '✓ Link copied! Paste it to share with caretakers.';
+    setTimeout(() => { msg.textContent = ''; }, 4000);
+  }).catch(() => {
+    msg.style.color = '#ef4444';
+    msg.textContent = url;
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -769,5 +759,5 @@ function exportXLSX(type){
   showToast('✓ Downloading Excel file!');
 }
 </script>
-
-</body></html>
+</body>
+</html>

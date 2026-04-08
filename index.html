@@ -156,6 +156,17 @@ textarea { resize: vertical; min-height: 65px; }
 .log-sub    { font-size: 0.75rem; color: var(--gray3); margin-top: 2px; }
 .log-del    { background: none; border: none; color: #d4b0bc; font-size: 1.1rem; cursor: pointer; padding: 4px; flex-shrink: 0; }
 .log-del:active { color: #ef4444; }
+.log-inprog { font-size: 0.75rem; color: #ec4899; font-style: italic; }
+
+/* Active Sleep Banner */
+.active-sleep-banner { background: linear-gradient(135deg, #fce4ec, #f8bbd9); border: 1.5px solid #f48fb1; border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.active-sleep-banner.hidden { display: none; }
+.asb-text { display: flex; align-items: center; gap: 10px; }
+.asb-emoji { font-size: 1.8rem; line-height: 1; }
+.asb-main { font-weight: 700; color: #7c2d45; font-size: 0.95rem; }
+.asb-sub { color: #a05070; font-size: 0.82rem; margin-top: 2px; }
+.asb-btn { background: #ec4899; color: white; border: none; border-radius: 12px; padding: 9px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: 0 3px 10px rgba(236,72,153,0.35); }
+.asb-btn:active { opacity: 0.8; }
 
 /* Export */
 .export-card { background: linear-gradient(135deg, var(--pink1), var(--pink3)); color: white; }
@@ -282,6 +293,7 @@ textarea { resize: vertical; min-height: 65px; }
 <div class="tabs">
   <button class="tab-btn active" onclick="showTab('feed',this)">🍼 Feed</button>
   <button class="tab-btn" onclick="showTab('sleep',this)">😴 Sleep</button>
+  <button class="tab-btn" onclick="showTab('diaper',this)">🚼 Diaper</button>
   <button class="tab-btn" onclick="showTab('log',this)">📋 Log</button>
   <button class="tab-btn" onclick="showTab('export',this)">📤 Export</button>
 </div>
@@ -309,6 +321,17 @@ textarea { resize: vertical; min-height: 65px; }
 
 <!-- SLEEP TAB -->
 <div id="tab-sleep" class="panel">
+  <!-- Active sleep banner -->
+  <div class="active-sleep-banner hidden" id="active-sleep-banner">
+    <div class="asb-text">
+      <span class="asb-emoji">😴</span>
+      <div>
+        <div class="asb-main">Currently Sleeping</div>
+        <div class="asb-sub" id="asb-since">—</div>
+      </div>
+    </div>
+    <button class="asb-btn" onclick="logWakeUp()">Baby Woke Up! 👶</button>
+  </div>
   <div class="card">
     <div class="card-title">😴 Log Sleep</div>
     <div class="field">
@@ -320,16 +343,39 @@ textarea { resize: vertical; min-height: 65px; }
     </div>
     <div class="field-row">
       <div class="field"><label>Date</label><input type="date" id="s-date"></div>
-      <div class="field"><label>Fell Asleep</label><input type="time" id="s-start"></div>
+      <div class="field"><label>Fell Asleep</label><input type="time" id="s-start" oninput="updateSleepBtn()"></div>
       <button class="btn-now" onclick="setNow('s-date','s-start')">Now</button>
     </div>
     <div class="field-row">
-      <div class="field" style="flex:1"><label>Woke Up</label><input type="time" id="s-end"></div>
+      <div class="field" style="flex:1"><label>Woke Up <span style="font-weight:400;font-size:0.75rem;color:var(--gray3)">(optional)</span></label><input type="time" id="s-end" oninput="calcDuration();updateSleepBtn()"></div>
       <button class="btn-now" style="margin-bottom:12px" onclick="setWakeNow()">Now</button>
     </div>
     <div class="field"><label>Duration</label><div class="computed" id="s-duration">Enter times above</div></div>
     <div class="field"><label>Notes (optional)</label><textarea id="s-notes" placeholder="e.g. woke up once, restless..."></textarea></div>
-    <button class="btn-submit" onclick="logSleep()">+ Log Sleep</button>
+    <button class="btn-submit" id="sleep-submit-btn" onclick="logSleep()">😴 Baby Fell Asleep — Log Now</button>
+    <div style="font-size:0.75rem;color:var(--gray3);text-align:center;margin-top:8px">Fill in "Woke Up" to log a completed sleep all at once</div>
+  </div>
+</div>
+
+<!-- DIAPER TAB -->
+<div id="tab-diaper" class="panel">
+  <div class="card">
+    <div class="card-title">🚼 Log Diaper Change</div>
+    <div class="field">
+      <label>Type</label>
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="d-type-wet" onclick="setDiaperType('Wet')">💧 Wet</button>
+        <button class="toggle-btn" id="d-type-dirty" onclick="setDiaperType('Dirty')">💩 Dirty</button>
+        <button class="toggle-btn" id="d-type-both" onclick="setDiaperType('Both')">💧💩 Both</button>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" id="d-date"></div>
+      <div class="field"><label>Time</label><input type="time" id="d-time"></div>
+      <button class="btn-now" onclick="setNow('d-date','d-time')">Now</button>
+    </div>
+    <div class="field"><label>Notes (optional)</label><textarea id="d-notes" placeholder="e.g. rash, unusual color…"></textarea></div>
+    <button class="btn-submit" onclick="logDiaper()">+ Log Diaper Change</button>
   </div>
 </div>
 
@@ -342,6 +388,10 @@ textarea { resize: vertical; min-height: 65px; }
   <div class="card">
     <div class="log-header"><span class="log-title">😴 Sleep</span><span class="log-count" id="sleep-count">0 entries</span></div>
     <div id="sleep-list"><div class="log-empty">No sleep logged yet.</div></div>
+  </div>
+  <div class="card">
+    <div class="log-header"><span class="log-title">🚼 Diapers</span><span class="log-count" id="diaper-count">0 entries</span></div>
+    <div id="diaper-list"><div class="log-empty">No diaper changes logged yet.</div></div>
   </div>
 </div>
 
@@ -390,8 +440,10 @@ textarea { resize: vertical; min-height: 65px; }
 const BAKED_DB_URL = "https://baby-linn-default-rtdb.firebaseio.com";
 
 let CFG = null;       // { dbUrl, pinHash, pin }
-let feedings = {};
-let sleeps   = {};
+let feedings   = {};
+let sleeps     = {};
+let diapers    = {};
+let diaperType = 'Wet';
 let sleepType = 'Night';
 let pinBuffer = '';
 const STORAGE_CFG  = 'btCfgG';
@@ -444,8 +496,8 @@ function initForm() {
   const now=new Date(), pad=n=>String(n).padStart(2,'0');
   const ds=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   const ts=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  ['f-date','s-date'].forEach(id=>document.getElementById(id).value=ds);
-  ['f-time','s-start'].forEach(id=>document.getElementById(id).value=ts);
+  ['f-date','s-date','d-date'].forEach(id=>document.getElementById(id).value=ds);
+  ['f-time','s-start','d-time'].forEach(id=>document.getElementById(id).value=ts);
   document.getElementById('s-start').addEventListener('input',calcDuration);
   document.getElementById('s-end').addEventListener('input',calcDuration);
 }
@@ -558,9 +610,9 @@ function setSyncStatus(s) {
 async function refreshData() {
   setSyncStatus('busy');
   try {
-    const [fr,sr]=await Promise.all([fetch(dbUrl('feedings')),fetch(dbUrl('sleeps'))]);
-    feedings=(await fr.json())||{}; sleeps=(await sr.json())||{};
-    if(!feedings)feedings={}; if(!sleeps)sleeps={};
+    const [fr,sr,dr]=await Promise.all([fetch(dbUrl('feedings')),fetch(dbUrl('sleeps')),fetch(dbUrl('diapers'))]);
+    feedings=(await fr.json())||{}; sleeps=(await sr.json())||{}; diapers=(await dr.json())||{};
+    if(!feedings)feedings={}; if(!sleeps)sleeps={}; if(!diapers)diapers={};
     setSyncStatus('ok'); renderLog();
   } catch(e) { setSyncStatus('off'); showToast('Could not reach Firebase — check your connection',true); }
 }
@@ -570,6 +622,9 @@ async function fbPost(path,data) {
 }
 async function fbDelete(path,key) {
   await fetch(`${CFG.dbUrl}/families/${CFG.pinHash}/${path}/${key}.json`,{method:'DELETE'});
+}
+async function fbPatch(path,key,data) {
+  await fetch(`${CFG.dbUrl}/families/${CFG.pinHash}/${path}/${key}.json`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
 }
 
 // ═══════════════════════════════════════════
@@ -596,6 +651,7 @@ function setWakeNow(){
   const now=new Date(),pad=n=>String(n).padStart(2,'0');
   document.getElementById('s-end').value=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
   calcDuration();
+  updateSleepBtn();
 }
 
 // ═══════════════════════════════════════════
@@ -607,6 +663,7 @@ function showTab(name,btn){
   document.getElementById('tab-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='log'||name==='export') refreshData().then(()=>{if(name==='export')renderSummary();});
+  if(name==='sleep') renderActiveSleep();
 }
 
 // ═══════════════════════════════════════════
@@ -647,8 +704,45 @@ async function logFeeding(){
 }
 
 // ═══════════════════════════════════════════
-// LOG SLEEP
+// LOG SLEEP (two-step: start now, wake later)
 // ═══════════════════════════════════════════
+function updateSleepBtn(){
+  const end=document.getElementById('s-end')?document.getElementById('s-end').value:'';
+  const btn=document.getElementById('sleep-submit-btn');
+  if(!btn)return;
+  btn.textContent=end?'💤 Log Complete Sleep':'😴 Baby Fell Asleep — Log Now';
+}
+function renderActiveSleep(){
+  const open=Object.values(sleeps).filter(s=>s&&s.start&&!s.end).sort((a,b)=>b._ts-a._ts);
+  const banner=document.getElementById('active-sleep-banner');
+  if(!banner)return;
+  if(open.length){
+    const s=open[0];
+    document.getElementById('asb-since').textContent=`${s.type} · started at ${fmtTime(s.start)}`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+async function logWakeUp(){
+  const open=Object.entries(sleeps).filter(([,s])=>s&&s.start&&!s.end).sort((a,b)=>b[1]._ts-a[1]._ts);
+  if(!open.length){showToast('No active sleep to close',true);return;}
+  const [key,entry]=open[0];
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  const end=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  let[sh,sm]=entry.start.split(':').map(Number),[eh,em]=end.split(':').map(Number);
+  let mins=(eh*60+em)-(sh*60+sm);if(mins<0)mins+=1440;
+  const duration=(mins/60).toFixed(2);
+  setSyncStatus('busy');
+  try {
+    await fbPatch('sleeps',key,{end,duration});
+    sleeps[key]={...sleeps[key],end,duration};
+    setSyncStatus('ok');
+    renderActiveSleep();
+    renderLog();
+    showToast(`👶 Awake! Slept ${Math.floor(mins/60)}h ${mins%60}m`);
+  } catch(e){setSyncStatus('off');showToast('Failed to save — check connection',true);}
+}
 async function logSleep(){
   const date=document.getElementById('s-date').value, start=document.getElementById('s-start').value;
   const end=document.getElementById('s-end').value;
@@ -664,7 +758,35 @@ async function logSleep(){
     document.getElementById('s-end').value=''; document.getElementById('s-notes').value='';
     document.getElementById('s-duration').textContent='Enter times above';
     setNow('s-date','s-start');
-    showToast('✓ Sleep logged!');
+    updateSleepBtn();
+    renderActiveSleep();
+    renderLog();
+    if(end) showToast('✓ Sleep logged!');
+    else showToast('😴 Sleep started! Tap "Baby Woke Up!" when she\'s up');
+  } catch(e){setSyncStatus('off');showToast('Failed to save — check connection',true);}
+}
+
+// ═══════════════════════════════════════════
+// LOG DIAPER
+// ═══════════════════════════════════════════
+function setDiaperType(t){
+  diaperType=t;
+  document.getElementById('d-type-wet').classList.toggle('active',t==='Wet');
+  document.getElementById('d-type-dirty').classList.toggle('active',t==='Dirty');
+  document.getElementById('d-type-both').classList.toggle('active',t==='Both');
+}
+async function logDiaper(){
+  const date=document.getElementById('d-date').value, time=document.getElementById('d-time').value;
+  if(!date||!time){showToast('Please enter date & time',true);return;}
+  const entry={date,time,type:diaperType,notes:document.getElementById('d-notes').value.trim()};
+  setSyncStatus('busy');
+  try {
+    const key=await fbPost('diapers',entry);
+    diapers[key]={...entry,_ts:Date.now()};
+    setSyncStatus('ok');
+    document.getElementById('d-notes').value='';
+    setNow('d-date','d-time');
+    showToast('✓ Diaper change logged!');
   } catch(e){setSyncStatus('off');showToast('Failed to save — check connection',true);}
 }
 
@@ -674,8 +796,10 @@ async function logSleep(){
 function renderLog(){
   const fa=Object.entries(feedings).filter(([,v])=>v&&v.date).sort((a,b)=>b[1]._ts-a[1]._ts);
   const sa=Object.entries(sleeps).filter(([,v])=>v&&v.date).sort((a,b)=>b[1]._ts-a[1]._ts);
+  const da=Object.entries(diapers).filter(([,v])=>v&&v.date).sort((a,b)=>b[1]._ts-a[1]._ts);
   document.getElementById('feed-count').textContent=fa.length+' entr'+(fa.length===1?'y':'ies');
   document.getElementById('sleep-count').textContent=sa.length+' entr'+(sa.length===1?'y':'ies');
+  document.getElementById('diaper-count').textContent=da.length+' entr'+(da.length===1?'y':'ies');
   document.getElementById('feed-list').innerHTML=fa.length===0?'<div class="log-empty">No feedings logged yet.</div>':
     fa.map(([key,f])=>`<div class="log-item">
       <div class="log-icon">🍼</div>
@@ -690,15 +814,30 @@ function renderLog(){
       <div class="log-icon">${s.type==='Night'?'🌙':'☀️'}</div>
       <div class="log-body">
         <div class="log-main">${fmtDate(s.date)} · ${s.type}</div>
-        <div class="log-sub">${fmtTime(s.start)}${s.end?' → '+fmtTime(s.end):''}${s.duration?' · '+s.duration+' hrs':''}${s.notes?' · '+s.notes:''}</div>
+        <div class="log-sub">${fmtTime(s.start)}${s.end?' → '+fmtTime(s.end):'<span class="log-inprog"> → still sleeping…</span>'}${s.duration?' · '+s.duration+' hrs':''}${s.notes?' · '+s.notes:''}</div>
       </div>
       <button class="log-del" onclick="deleteEntry('sleeps','${key}')">✕</button>
     </div>`).join('');
+  document.getElementById('diaper-list').innerHTML=da.length===0?'<div class="log-empty">No diaper changes logged yet.</div>':
+    da.map(([key,d])=>`<div class="log-item">
+      <div class="log-icon">${d.type==='Wet'?'💧':d.type==='Dirty'?'💩':'💧💩'}</div>
+      <div class="log-body">
+        <div class="log-main">${fmtDate(d.date)} · ${fmtTime(d.time)}</div>
+        <div class="log-sub">${d.type}${d.notes?' · '+d.notes:''}</div>
+      </div>
+      <button class="log-del" onclick="deleteEntry('diapers','${key}')">✕</button>
+    </div>`).join('');
+  renderActiveSleep();
 }
 async function deleteEntry(type,key){
   setSyncStatus('busy');
-  try { await fbDelete(type,key); if(type==='feedings')delete feedings[key];else delete sleeps[key]; setSyncStatus('ok');renderLog(); }
-  catch(e){setSyncStatus('off');showToast('Delete failed — check connection',true);}
+  try {
+    await fbDelete(type,key);
+    if(type==='feedings') delete feedings[key];
+    else if(type==='sleeps') delete sleeps[key];
+    else if(type==='diapers') delete diapers[key];
+    setSyncStatus('ok'); renderLog();
+  } catch(e){setSyncStatus('off');showToast('Delete failed — check connection',true);}
 }
 
 // ═══════════════════════════════════════════
@@ -709,8 +848,11 @@ function renderSummary(){
   const todayStr=`${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
   const fa=Object.values(feedings).filter(f=>f&&f.date===todayStr);
   const sa=Object.values(sleeps).filter(s=>s&&s.date===todayStr);
+  const da=Object.values(diapers).filter(d=>d&&d.date===todayStr);
   const totalOz=fa.reduce((a,f)=>a+(parseFloat(f.oz)||0),0);
   const totalSleep=sa.reduce((a,s)=>a+(parseFloat(s.duration)||0),0);
+  const wetCount=da.filter(d=>d.type==='Wet'||d.type==='Both').length;
+  const dirtyCount=da.filter(d=>d.type==='Dirty'||d.type==='Both').length;
   document.getElementById('summary-content').innerHTML=`
     <div><strong>📅 Today:</strong> ${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
     <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
@@ -720,7 +862,9 @@ function renderSummary(){
     <div>😴 <strong>Total sleep:</strong> ${totalSleep.toFixed(1)} hrs</div>
     <div>☀️ <strong>Naps today:</strong> ${sa.filter(s=>s.type==='Nap').length}</div>
     <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
-    <div style="color:var(--gray3);font-size:0.78rem">All entries: ${Object.keys(feedings).length} feedings · ${Object.keys(sleeps).length} sleep sessions</div>`;
+    <div>🚼 <strong>Diaper changes:</strong> ${da.length} (💧 ${wetCount} wet · 💩 ${dirtyCount} dirty)</div>
+    <hr style="border:none;border-top:1px solid var(--gray2);margin:7px 0">
+    <div style="color:var(--gray3);font-size:0.78rem">All entries: ${Object.keys(feedings).length} feedings · ${Object.keys(sleeps).length} sleep sessions · ${Object.keys(diapers).length} diapers</div>`;
 }
 
 // ═══════════════════════════════════════════

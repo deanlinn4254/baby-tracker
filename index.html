@@ -402,6 +402,7 @@ textarea { resize: vertical; min-height: 65px; }
     <p class="export-desc">Downloads a real .xlsx Excel file — opens directly in Excel.</p>
     <button class="btn-export" onclick="exportXLSX('feeding')">⬇️ Download Feeding Log (.xlsx)</button>
     <button class="btn-export btn-export-sleep" onclick="exportXLSX('sleep')">⬇️ Download Sleep Log (.xlsx)</button>
+    <button class="btn-export btn-export-sleep" onclick="exportXLSX('diaper')">⬇️ Download Diaper Log (.xlsx)</button>
   </div>
 
   <div class="card">
@@ -889,7 +890,7 @@ function exportXLSX(type){
     applyS(ws,rows.length);
     XLSX.utils.book_append_sheet(wb,ws,'Feeding Log');
     XLSX.writeFile(wb,'baby_feeding_log.xlsx');
-  } else {
+  } else if(type==='sleep'){
     const arr=Object.values(sleeps).filter(s=>s&&s.date).sort((a,b)=>a._ts-b._ts);
     if(!arr.length){showToast('No sleep entries to export',true);return;}
     const h=['Date','Sleep Type','Sleep Start','Wake Up','Duration (hrs)','Notes'];
@@ -899,6 +900,16 @@ function exportXLSX(type){
     applyS(ws,rows.length);
     XLSX.utils.book_append_sheet(wb,ws,'Sleep Log');
     XLSX.writeFile(wb,'baby_sleep_log.xlsx');
+  } else {
+    const arr=Object.values(diapers).filter(d=>d&&d.date).sort((a,b)=>a._ts-b._ts);
+    if(!arr.length){showToast('No diaper entries to export',true);return;}
+    const h=['Date','Time','Type','Notes'];
+    const rows=arr.map(d=>[fmtDate(d.date),fmtTime(d.time),d.type||'',d.notes||'']);
+    const ws=XLSX.utils.aoa_to_sheet([h,...rows]);
+    ws['!cols']=[14,12,12,40].map(w=>({wch:w}));
+    applyS(ws,rows.length);
+    XLSX.utils.book_append_sheet(wb,ws,'Diaper Log');
+    XLSX.writeFile(wb,'baby_diaper_log.xlsx');
   }
   showToast('✓ Downloading Excel file!');
 }
